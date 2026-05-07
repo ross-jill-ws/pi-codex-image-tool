@@ -1,6 +1,6 @@
 {
   "name": "pi-codex-image-tool",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pi extension exposing a gpt-5.5+ image generation tool backed by gpt-image-2.",
   "type": "module",
   "packageManager": "bun@1.3.9",
