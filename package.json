@@ -1,7 +1,7 @@
 {
   "name": "pi-codex-image-tool",
   "version": "0.1.0",
-  "description": "Minimal Pi extension scaffold with a greetings test tool registered via registerTool.",
+  "description": "Pi extension exposing a gpt-5.5+ image generation tool backed by gpt-image-2.",
   "type": "module",
   "packageManager": "bun@1.3.9",
   "repository": {
@@ -14,13 +14,15 @@
     "pi-package",
     "pi",
     "pi-extension",
-    "greetings",
-    "testing"
+    "image-generation",
+    "gpt-image-2",
+    "gpt-5.5"
   ],
   "files": [
     "extensions",
     "package.json",
-    "README.md"
+    "README.md",
+    "media"
   ],
   "scripts": {
     "check": "bunx tsc --noEmit"
