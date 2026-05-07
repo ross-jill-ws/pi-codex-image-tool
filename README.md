@@ -121,16 +121,16 @@ bun install
 pi -e .
 ```
 
-Or install it as a local Pi package:
+Or install it globally from npm:
 
 ```bash
-pi install /Users/rossz/workspace/ai-tools/pi/rossz-extensions/pi-codex-image-tool
+pi install npm:pi-codex-image-tool
 ```
 
 For project-local installation in another repo, run:
 
 ```bash
-pi install -l /Users/rossz/workspace/ai-tools/pi/rossz-extensions/pi-codex-image-tool
+pi install -l npm:pi-codex-image-tool
 ```
 
 ## Verify
