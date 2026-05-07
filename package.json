@@ -38,6 +38,7 @@
   "pi": {
     "extensions": [
       "extensions/index.ts"
-    ]
+    ],
+    "image": "https://github.com/ross-jill-ws/pi-codex-image-tool/blob/main/media/codex-image-cat.png?raw=true"
   }
 }
