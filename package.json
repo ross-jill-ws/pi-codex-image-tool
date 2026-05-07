@@ -6,7 +6,7 @@
   "packageManager": "bun@1.3.9",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/ross-jill-ws/pi-codex-image-tool.git"
   },
   "author": "Ross Z",
   "license": "MIT",

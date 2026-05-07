@@ -2,7 +2,7 @@
 
 Pi extension that exposes a `codex_image` wrapper tool for `gpt-5.5+` models. The wrapper lets Pi ask Codex/GPT-5.5 to use its native hosted image-generation capability and save the streamed image bytes to disk.
 
-> GitHub link: 
+> GitHub link: https://github.com/ross-jill-ws/pi-codex-image-tool
 
 ## Why this exists
 
