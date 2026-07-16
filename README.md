@@ -1,6 +1,6 @@
 # pi-codex-image-tool
 
-Pi extension that exposes a `codex_image` wrapper tool for `gpt-5.5+` models. The wrapper lets Pi ask Codex/GPT-5.5 to use its native hosted image-generation capability and save the streamed image bytes to disk.
+Pi extension for the `openai-codex` provider. It exposes a `codex_image` wrapper tool that lets Pi ask Codex to use its native hosted image-generation capability and save the streamed image bytes to disk, and it adds an OpenAI `service_tier` selector (footer display + `alt+shift+tab` cycling) applied to every Codex request.
 
 > GitHub link: https://github.com/ross-jill-ws/pi-codex-image-tool
 
@@ -27,7 +27,7 @@ This extension registers a Pi wrapper tool named `codex_image`. When GPT-5.5 cal
 
 You do **not** need to set `OPENAI_API_KEY` for this extension if you already use Pi with a Codex/ChatGPT subscription.
 
-As long as your current Pi model is `gpt-5.5` or another matching `gpt-5.x` model where `x >= 5`, the extension uses Pi's existing model auth/session. In other words, your existing Codex subscription is enough.
+As long as your current Pi model belongs to the `openai-codex` provider, the extension uses Pi's existing model auth/session. In other words, your existing Codex subscription is enough.
 
 ## Usage
 
@@ -91,9 +91,13 @@ This repository is a Pi package. Its `package.json` contains:
 
 ## Extension behavior
 
+### Provider gating
+
+Everything in this extension (the `codex_image` tool, the service-tier request property, the footer display, and the keyboard shortcut) is active only while Pi's current model belongs to the `openai-codex` provider. The extension syncs this on session start and whenever the user switches models.
+
 ### `codex_image` tool
 
-The extension exposes the `codex_image` Pi wrapper tool only when Pi's current model matches `gpt-5.x` with `x >= 5` (for example `gpt-5.5` or `gpt-5.10`). It syncs this on session start and whenever the user switches models. For any other model, the wrapper is removed from the active tool list so it does not appear in the LLM prompt.
+The extension exposes the `codex_image` Pi wrapper tool only when the current model's provider is `openai-codex`. For any other provider, the wrapper is removed from the active tool list so it does not appear in the LLM prompt.
 
 The OpenAI/Codex API request does **not** define a `generate_image` function tool. It only sends the native hosted image tool as `type: "image_generation"`.
 
@@ -111,6 +115,25 @@ Fixed API tool settings:
 - `model`: `gpt-image-2`
 
 The extension parses streamed SSE `data:` events, including `partial_image_b64` / `result` image payloads, and saves the first image payload to `target-path` as soon as it arrives. The generated image is also returned inline to Pi.
+
+### Service tier
+
+While an `openai-codex` model is active, the extension injects a top-level `service_tier` property into every request body Pi sends to the provider (and into its own `codex_image` requests):
+
+```json
+{
+  "model": "gpt-5.6-luna",
+  "store": false,
+  "stream": true,
+  "service_tier": "priority",
+  "reasoning": { "effort": "high", "summary": "auto" }
+}
+```
+
+- Available values: `auto` | `default` | `flex` | `scale` | `priority` (default: `auto`).
+- The active tier is displayed at the bottom-right of the footer, e.g. `tier: priority`.
+- Press `alt+shift+tab` (option+shift+tab on macOS) to cycle through the values. The selection is persisted in the session, so it survives resume.
+- Start Pi with `pi --codex-service-tier priority` to set the tier directly. The CLI flag overrides the session-persisted value.
 
 ## Install / Use Locally
 
@@ -161,7 +184,7 @@ bun run check
 ## Requirements
 
 - Pi installed and configured
-- Current Pi model set to `gpt-5.5+`
+- Current Pi model from the `openai-codex` provider
 - Existing Codex/ChatGPT subscription auth in Pi
 - Bun for local development
 
