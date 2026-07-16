@@ -9,10 +9,9 @@
  *     tools: [{ type: "image_generation", model: "gpt-image-2", size }]
  *     tool_choice: { type: "image_generation" }
  *
- * - A `service_tier` property ('auto' | 'default' | 'flex' | 'scale' |
- *   'priority') injected into every provider request body. The active tier is
- *   shown at the bottom-right of the footer and can be cycled with
- *   alt+shift+tab.
+ * - A `service_tier` property ('default' | 'priority') injected into every
+ *   provider request body. The active tier is shown at the bottom-right of
+ *   the footer and can be cycled with alt+shift+tab.
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
@@ -33,9 +32,9 @@ const IMAGE_MODEL = "gpt-image-2";
 const IMAGE_SIZES = ["1024x1024", "1024x1536", "1536x1024"] as const;
 const DEFAULT_TARGET_PATH = "/tmp/pi-codex-image-tool";
 
-const SERVICE_TIERS = ["auto", "default", "flex", "scale", "priority"] as const;
+const SERVICE_TIERS = ["default", "priority"] as const;
 type ServiceTier = (typeof SERVICE_TIERS)[number];
-const DEFAULT_SERVICE_TIER: ServiceTier = "auto";
+const DEFAULT_SERVICE_TIER: ServiceTier = "default";
 const SERVICE_TIER_ENTRY_TYPE = "codex-service-tier";
 const SERVICE_TIER_FLAG = "codex-service-tier";
 const SERVICE_TIER_SHORTCUT = "alt+shift+tab" as const;
