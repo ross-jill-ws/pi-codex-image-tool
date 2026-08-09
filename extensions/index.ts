@@ -16,14 +16,14 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import { StringEnum, Type, type Model, type Static } from "@mariozechner/pi-ai";
+import { StringEnum, Type, type Model, type Static } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
   ReadonlyFooterDataProvider,
   Theme,
-} from "@mariozechner/pi-coding-agent";
-import { truncateToWidth, visibleWidth, type Component, type TUI } from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth, type Component, type TUI } from "@earendil-works/pi-tui";
 
 const TOOL_NAME = "codex_image";
 const CODEX_PROVIDER = "openai-codex";
@@ -112,7 +112,12 @@ async function buildHeaders(ctx: ExtensionContext, model: Model<any>): Promise<H
   const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
   if (!auth.ok) throw new Error(auth.error);
 
-  const headers = new Headers(auth.headers);
+  // ProviderHeaders values may be null (= delete that header), which
+  // Headers' constructor rejects — only copy real string values.
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(auth.headers ?? {})) {
+    if (typeof value === "string") headers.set(key, value);
+  }
   headers.set("content-type", "application/json");
   headers.set("accept", "text/event-stream, application/json");
 
@@ -531,7 +536,9 @@ function renderFooter(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([, text]) => sanitizeStatusText(text))
     .join(" ");
-  const tierStr = theme.fg("dim", "tier: ") + theme.fg("accent", deps.getServiceTier());
+  const tierStr = theme.fg("dim", "tier: ") +
+    theme.fg("accent", deps.getServiceTier()) +
+    theme.fg("dim", ` (${SERVICE_TIER_SHORTCUT})`);
   const tierWidth = visibleWidth(tierStr);
 
   if (tierWidth >= width) {
