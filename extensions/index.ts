@@ -14,9 +14,9 @@
  *   the footer and can be cycled with alt+shift+tab.
  */
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
-import { StringEnum, Type, type Model, type Static } from "@earendil-works/pi-ai";
+import { StringEnum, Type, type ImageContent, type Model, type Static } from "@earendil-works/pi-ai";
 import type {
   ExtensionAPI,
   ExtensionContext,
@@ -41,8 +41,16 @@ const SERVICE_TIER_SHORTCUT = "alt+shift+tab" as const;
 
 const GenerateImageParams = Type.Object({
   prompt: Type.String({
-    description: "Detailed prompt describing the image to generate.",
+    description: "Detailed prompt describing the image to generate or edit.",
   }),
+  "input-images": Type.Optional(
+    Type.Array(
+      Type.String({
+        description: "Path to an input or reference image. Relative paths are resolved from the current working directory.",
+      }),
+      { description: "One or more images to edit, combine, or use as visual references." },
+    ),
+  ),
   size: StringEnum(IMAGE_SIZES, {
     description: "Output image size.",
     default: "1024x1024",
@@ -61,6 +69,8 @@ interface GenerateImageDetails {
   imageModel: typeof IMAGE_MODEL;
   size: GenerateImageParamsType["size"];
   targetPath: string;
+  inputPaths: string[];
+  inputCount: number;
   outputPath: string;
   mimeType: string;
   responseId?: string;
@@ -138,7 +148,64 @@ async function buildHeaders(ctx: ExtensionContext, model: Model<any>): Promise<H
   return headers;
 }
 
-function buildRequestBody(model: Model<any>, params: GenerateImageParamsType, serviceTier: ServiceTier) {
+interface InputImageContent {
+  type: "input_image";
+  image_url: string;
+  detail: "auto";
+}
+
+function detectInputImageMimeType(data: Buffer, path: string): string {
+  if (data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return "image/png";
+  }
+  if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return "image/jpeg";
+  if (data.subarray(0, 4).toString("ascii") === "RIFF" && data.subarray(8, 12).toString("ascii") === "WEBP") {
+    return "image/webp";
+  }
+  throw new Error(`Unsupported input image format for ${path}. Use PNG, JPEG, or WebP.`);
+}
+
+async function loadInputImages(
+  ctx: ExtensionContext,
+  params: GenerateImageParamsType,
+  attachedImages: ImageContent[],
+): Promise<{ content: InputImageContent[]; paths: string[] }> {
+  const paths = (params["input-images"] ?? []).map((path) => {
+    const normalized = path.startsWith("@") ? path.slice(1) : path;
+    return isAbsolute(normalized) ? normalized : resolve(ctx.cwd, normalized);
+  });
+
+  const pathContent = await Promise.all(paths.map(async (path) => {
+    const data = await readFile(path);
+    const mimeType = detectInputImageMimeType(data, path);
+    return {
+      type: "input_image" as const,
+      image_url: `data:${mimeType};base64,${data.toString("base64")}`,
+      detail: "auto" as const,
+    };
+  }));
+  const attachedContent = attachedImages.map((image) => ({
+    type: "input_image" as const,
+    image_url: `data:${image.mimeType};base64,${image.data}`,
+    detail: "auto" as const,
+  }));
+
+  const seen = new Set<string>();
+  const content = [...attachedContent, ...pathContent].filter((image) => {
+    if (seen.has(image.image_url)) return false;
+    seen.add(image.image_url);
+    return true;
+  });
+
+  return { content, paths };
+}
+
+function buildRequestBody(
+  model: Model<any>,
+  params: GenerateImageParamsType,
+  serviceTier: ServiceTier,
+  inputImages: InputImageContent[],
+) {
   return {
     model: model.id,
     store: false,
@@ -157,6 +224,7 @@ function buildRequestBody(model: Model<any>, params: GenerateImageParamsType, se
             type: "input_text",
             text: params.prompt,
           },
+          ...inputImages,
         ],
       },
     ],
@@ -557,6 +625,7 @@ function renderFooter(
 export default function (pi: ExtensionAPI) {
   let registered = false;
   let footerActive = false;
+  let promptImages: ImageContent[] = [];
   let serviceTier: ServiceTier = DEFAULT_SERVICE_TIER;
   let currentModel: Model<any> | undefined;
   let currentCtx: ExtensionContext | undefined;
@@ -576,11 +645,13 @@ export default function (pi: ExtensionAPI) {
       name: TOOL_NAME,
       label: "Generate Image",
       description:
-        "Generate an image using the current OpenAI Codex model's native image_generation tool. " +
-        `The API request uses type=${IMAGE_GENERATION_TOOL_TYPE}, model=${IMAGE_MODEL}, caller-controlled size, and target-path save location.`,
-      promptSnippet: "Generate images with gpt-image-2 through the current OpenAI Codex model.",
+        "Generate or edit an image using the current OpenAI Codex model's native image_generation tool. " +
+        `The API request uses type=${IMAGE_GENERATION_TOOL_TYPE}, model=${IMAGE_MODEL}, optional input-images, caller-controlled size, and target-path save location.`,
+      promptSnippet: "Generate or edit images with gpt-image-2 through the current OpenAI Codex model.",
       promptGuidelines: [
-        "Use codex_image when the user asks to create, draw, generate, or render an image.",
+        "Use codex_image when the user asks to create, draw, generate, render, or edit an image.",
+        "Images attached to the current prompt are forwarded to codex_image automatically.",
+        "When editing, combining, or following additional local image references, pass their paths in codex_image input-images and explain each image's role in the prompt.",
         "Pass codex_image a detailed prompt, choose the requested size, and set target-path when the user asks to save in a specific folder.",
       ],
       parameters: GenerateImageParams,
@@ -592,14 +663,20 @@ export default function (pi: ExtensionAPI) {
         }
 
         const targetPath = resolveTargetPath(ctx, params);
+        const inputImages = await loadInputImages(ctx, params, promptImages);
+        const action = inputImages.content.length > 0
+          ? `Editing from ${inputImages.content.length} input image(s)`
+          : "Generating image";
 
         onUpdate?.({
-          content: [{ type: "text", text: `Requesting ${params.size} image from ${IMAGE_MODEL}...` }],
+          content: [{ type: "text", text: `${action} at ${params.size} with ${IMAGE_MODEL}...` }],
           details: {
             model: `${model.provider}/${model.id}`,
             imageModel: IMAGE_MODEL,
             size: params.size,
             targetPath,
+            inputPaths: inputImages.paths,
+            inputCount: inputImages.content.length,
             outputPath: "",
             mimeType: "image/png",
           },
@@ -608,7 +685,7 @@ export default function (pi: ExtensionAPI) {
         const response = await fetch(resolveResponsesUrl(model), {
           method: "POST",
           headers: await buildHeaders(ctx, model),
-          body: JSON.stringify(buildRequestBody(model, params, serviceTier)),
+          body: JSON.stringify(buildRequestBody(model, params, serviceTier, inputImages.content)),
           signal,
         });
 
@@ -625,6 +702,8 @@ export default function (pi: ExtensionAPI) {
               imageModel: IMAGE_MODEL,
               size: params.size,
               targetPath,
+              inputPaths: inputImages.paths,
+              inputCount: inputImages.content.length,
               outputPath: savedImage.outputPath,
               mimeType: savedImage.mimeType,
             },
@@ -641,6 +720,8 @@ export default function (pi: ExtensionAPI) {
             imageModel: IMAGE_MODEL,
             size: params.size,
             targetPath,
+            inputPaths: inputImages.paths,
+            inputCount: inputImages.content.length,
             outputPath: saved.outputPath,
             mimeType: saved.mimeType,
             responseId: extractResponseId(payload),
@@ -737,6 +818,10 @@ export default function (pi: ExtensionAPI) {
       pi.appendEntry(SERVICE_TIER_ENTRY_TYPE, { tier: serviceTier });
       footerTui?.requestRender();
     },
+  });
+
+  pi.on("before_agent_start", (event) => {
+    promptImages = event.images ?? [];
   });
 
   pi.on("before_provider_request", (event, ctx) => {
