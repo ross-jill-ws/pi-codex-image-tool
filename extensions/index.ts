@@ -28,7 +28,7 @@ import { truncateToWidth, visibleWidth, type Component, type TUI } from "@earend
 const TOOL_NAME = "codex_image";
 const CODEX_PROVIDER = "openai-codex";
 const IMAGE_GENERATION_TOOL_TYPE = "image_generation";
-const IMAGE_MODEL = "gpt-image-2";
+const IMAGE_MODEL = "gpt-image-2.5";
 const IMAGE_SIZES = ["1024x1024", "1024x1536", "1536x1024"] as const;
 const DEFAULT_TARGET_PATH = "/tmp/pi-codex-image-tool";
 
