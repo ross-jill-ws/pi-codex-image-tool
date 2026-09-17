@@ -6,7 +6,7 @@
  * - A `codex_image` Pi wrapper tool that calls the current model's Responses
  *   endpoint with OpenAI's image-generation tool configuration:
  *
- *     tools: [{ type: "image_generation", model: "gpt-image-2", size }]
+ *     tools: [{ type: "image_generation", model: "gpt-image-2.5", size }]
  *     tool_choice: { type: "image_generation" }
  *
  * - A `service_tier` property ('default' | 'priority') injected into every
@@ -647,7 +647,7 @@ export default function (pi: ExtensionAPI) {
       description:
         "Generate or edit an image using the current OpenAI Codex model's native image_generation tool. " +
         `The API request uses type=${IMAGE_GENERATION_TOOL_TYPE}, model=${IMAGE_MODEL}, optional input-images, caller-controlled size, and target-path save location.`,
-      promptSnippet: "Generate or edit images with gpt-image-2 through the current OpenAI Codex model.",
+      promptSnippet: `Generate or edit images with ${IMAGE_MODEL} through the current OpenAI Codex model.`,
       promptGuidelines: [
         "Use codex_image when the user asks to create, draw, generate, render, or edit an image.",
         "Images attached to the current prompt are forwarded to codex_image automatically.",

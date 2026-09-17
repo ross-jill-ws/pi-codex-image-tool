@@ -13,7 +13,7 @@ GPT-5.5+ can generate images through its own API-side hosted tool. This is **not
   "tools": [
     {
       "type": "image_generation",
-      "model": "gpt-image-2",
+      "model": "gpt-image-2.5",
       "size": "1024x1024"
     }
   ],
@@ -117,13 +117,13 @@ Tool parameters:
 |---|---:|---:|---|
 | `prompt` | string | yes | Detailed prompt describing the image to generate or edit |
 | `input-images` | string[] | no | Local PNG, JPEG, or WebP paths to edit, combine, or use as references. Images attached to the current prompt are included automatically |
-| `size` | enum | yes | Image size requested from `gpt-image-2` |
+| `size` | enum | yes | Image size requested from `gpt-image-2.5` |
 | `target-path` | string | yes | Directory where streamed image data is saved. Defaults to `/tmp/pi-codex-image-tool` |
 
 Fixed API tool settings:
 
 - `type`: `image_generation`
-- `model`: `gpt-image-2`
+- `model`: `gpt-image-2.5`
 
 The extension parses streamed SSE `data:` events, including `partial_image_b64` / `result` image payloads, and saves the first image payload to `target-path` as soon as it arrives. The generated image is also returned inline to Pi.
 
