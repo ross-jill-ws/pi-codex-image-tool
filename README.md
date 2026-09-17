@@ -49,6 +49,16 @@ You can also specify a save location:
 Generate an image of a panda using codex_image tool and save it to ./panda-images
 ```
 
+### Image editing and references
+
+Attach one or more images to the same prompt and describe the role of each image. Images attached by pasting, dragging, or using Pi's `@file` syntax are forwarded automatically:
+
+```text
+Edit @cat.png using @watercolor-sky.png. Keep the cat from the first image and use the style and background from the second.
+```
+
+The tool also accepts local PNG, JPEG, and WebP paths through its optional `input-images` parameter. Relative paths are resolved from Pi's current working directory.
+
 ### Image size
 
 Mention the image size in the prompt with `widthxheight`, for example:
@@ -105,7 +115,8 @@ Tool parameters:
 
 | Parameter | Type | Required | Description |
 |---|---:|---:|---|
-| `prompt` | string | yes | Detailed prompt describing the image to generate |
+| `prompt` | string | yes | Detailed prompt describing the image to generate or edit |
+| `input-images` | string[] | no | Local PNG, JPEG, or WebP paths to edit, combine, or use as references. Images attached to the current prompt are included automatically |
 | `size` | enum | yes | Image size requested from `gpt-image-2` |
 | `target-path` | string | yes | Directory where streamed image data is saved. Defaults to `/tmp/pi-codex-image-tool` |
 
