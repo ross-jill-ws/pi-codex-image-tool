@@ -37,6 +37,7 @@ type ServiceTier = (typeof SERVICE_TIERS)[number];
 const DEFAULT_SERVICE_TIER: ServiceTier = "default";
 const SERVICE_TIER_ENTRY_TYPE = "codex-service-tier";
 const SERVICE_TIER_FLAG = "codex-service-tier";
+const SERVICE_TIER_ENV = "PI_CODEX_SERVICE_TIER";
 const SERVICE_TIER_SHORTCUT = "alt+shift+tab" as const;
 
 const GenerateImageParams = Type.Object({
@@ -788,7 +789,21 @@ export default function (pi: ExtensionAPI) {
     }
   }
 
-  // The --codex-service-tier CLI flag overrides the session-persisted tier.
+  // The environment variable overrides the session-persisted tier.
+  function applyServiceTierEnv(ctx: ExtensionContext) {
+    const value = process.env[SERVICE_TIER_ENV];
+    if (value === undefined || value === "") return;
+
+    if ((SERVICE_TIERS as readonly string[]).includes(value)) {
+      serviceTier = value as ServiceTier;
+    } else if (ctx.hasUI) {
+      const message = `Ignoring ${SERVICE_TIER_ENV}="${value}". Valid values: ${SERVICE_TIERS.join(", ")}.`;
+      ctx.ui.notify(message, "warning");
+    }
+  }
+
+  // The CLI flag has the highest precedence and overrides both the environment
+  // variable and the session-persisted tier.
   function applyServiceTierFlag(ctx: ExtensionContext) {
     const flag = pi.getFlag(SERVICE_TIER_FLAG);
     if (typeof flag !== "string" || flag === "") return;
@@ -836,6 +851,7 @@ export default function (pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     restoreServiceTier(ctx);
+    applyServiceTierEnv(ctx);
     applyServiceTierFlag(ctx);
     syncForModel(ctx.model, ctx);
   });

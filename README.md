@@ -144,7 +144,14 @@ While an `openai-codex` model is active, the extension injects a top-level `serv
 - Available values: `default` | `priority` (default: `default`).
 - The active tier is displayed at the bottom-right of the footer along with the cycle shortcut, e.g. `tier: priority (alt+shift+tab)`.
 - Press `alt+shift+tab` (option+shift+tab on macOS) to cycle through the values. The selection is persisted in the session, so it survives resume.
-- Start Pi with `pi --codex-service-tier priority` to set the tier directly. The CLI flag overrides the session-persisted value.
+- Set `PI_CODEX_SERVICE_TIER=priority` to select the tier through the environment.
+- Start Pi with `pi --codex-service-tier priority` to set the tier directly. The CLI flag overrides both the environment and session-persisted values.
+
+Precedence is CLI flag → environment variable → session-persisted value → `default`. For example:
+
+```bash
+PI_CODEX_SERVICE_TIER=priority pi -e .
+```
 
 ## Install / Use Locally
 
